@@ -16,6 +16,12 @@ issues:
       linters:
         - dupl
         - lll
+    - path: "pkg/*"
+      linters:
+        - lll
+    - linters:
+      - staticcheck
+      text: "SA1019: \"sigs.k8s.io/cluster-api/errors\" is deprecated:"
 linters:
   disable-all: true
   enable:

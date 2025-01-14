@@ -19,6 +19,36 @@ package v1alpha1
 import clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
 
 const (
+	// InstanceReadyCondition reports on current status of the ECS instance. Ready indicates the instance is in a Running state.
+	InstanceReadyCondition clusterv1.ConditionType = "InstanceReady"
+
+	// InstanceNotFoundReason used when the instance couldn't be retrieved.
+	InstanceNotFoundReason = "InstanceNotFound"
+	// InstanceTerminatedReason instance is in a terminated state.
+	InstanceTerminatedReason = "InstanceTerminated"
+	// InstanceStoppedReason instance is in a stopped state.
+	InstanceStoppedReason = "InstanceStopped"
+	// InstanceNotReadyReason used when the instance is in a pending state.
+	InstanceNotReadyReason = "InstanceNotReady"
+	// InstanceProvisionStartedReason set when the provisioning of an instance started.
+	InstanceProvisionStartedReason = "InstanceProvisionStarted"
+	// InstanceProvisionFailedReason used for failures during instance provisioning.
+	InstanceProvisionFailedReason = "InstanceProvisionFailed"
+	// WaitingForClusterInfrastructureReason used when machine is waiting for cluster infrastructure to be ready before proceeding.
+	WaitingForClusterInfrastructureReason = "WaitingForClusterInfrastructure"
+	// WaitingForBootstrapDataReason used when machine is waiting for bootstrap data to be ready before proceeding.
+	WaitingForBootstrapDataReason = "WaitingForBootstrapData"
+)
+
+const (
+	// SecurityGroupsReadyCondition indicates the security groups are up to date on the HuaweiCloudMachine.
+	SecurityGroupsReadyCondition clusterv1.ConditionType = "SecurityGroupsReady"
+
+	// SecurityGroupsFailedReason used when the security groups could not be synced.
+	SecurityGroupsFailedReason = "SecurityGroupsSyncFailed"
+)
+
+const (
 	// VpcReadyCondition reports on the successful reconciliation of a VPC.
 	VpcReadyCondition clusterv1.ConditionType = "VpcReady"
 	// VpcCreationStartedReason used when attempting to create a VPC for a managed cluster.

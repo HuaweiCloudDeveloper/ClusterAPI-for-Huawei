@@ -38,14 +38,16 @@ kustomize_substitutions:
   CLOUD_SDK_AK: "xxxxxxxx"
   CLOUD_SDK_SK: "xxxxxxxx"
 
-  HC_REGION: "cn-east-5"
+  HC_REGION: "cn-north-4"
   HC_SSH_KEY_NAME: "default"
   KUBERNETES_VERSION: "v1.26.15"
   CLUSTER_NAME: "hello"
   CONTROL_PLANE_MACHINE_COUNT: "1"
   WORKER_MACHINE_COUNT: "1"
-  HC_CONTROL_PLANE_MACHINE_TYPE: "c6.xlarge.2"
-  HC_NODE_MACHINE_TYPE: "c6.xlarge.2"
+  HC_CONTROL_PLANE_MACHINE_TYPE: "x1e.2u.4g"
+  HC_NODE_MACHINE_TYPE: "x1e.2u.4g"
+
+  ECS_IMAGE_ID: "a9f5cc27-0d50-4864-a45e-d8eead734a3f"
 ```
 
 **Note:** Please ensure that the values for `CLOUD_SDK_AK` and `CLOUD_SDK_SK` are base64 encoded.

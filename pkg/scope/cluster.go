@@ -25,6 +25,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	infrav1alpha1 "github.com/HuaweiCloudDeveloper/cluster-api-provider-huawei/api/v1alpha1"
+	"github.com/huaweicloud/huaweicloud-sdk-go-v3/core/auth"
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
 	"sigs.k8s.io/cluster-api/util/conditions"
 	"sigs.k8s.io/cluster-api/util/patch"
@@ -170,4 +171,28 @@ func (s *ClusterScope) PatchObject() error {
 			infrav1alpha1.ClusterSecurityGroupsReadyCondition,
 			infrav1alpha1.NatGatewaysReadyCondition,
 		}})
+}
+
+func (c *ClusterScope) Network() *infrav1alpha1.NetworkStatus {
+	return &c.HCCluster.Status.Network
+}
+
+func (c *ClusterScope) SSHKeyName() *string {
+	panic("TODO: Implement")
+}
+
+func (c *ClusterScope) ImageLookupFormat() string {
+	panic("TODO: Implement")
+}
+
+func (c *ClusterScope) ImageLookupOrg() string {
+	panic("TODO: Implement")
+}
+
+func (c *ClusterScope) ImageLookupBaseOS() string {
+	panic("TODO: Implement")
+}
+
+func (c *ClusterScope) Credential() auth.ICredential {
+	return c.Credentials
 }

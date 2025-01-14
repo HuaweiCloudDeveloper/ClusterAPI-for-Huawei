@@ -18,6 +18,7 @@ package v1alpha1
 
 import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
 )
 
 // EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
@@ -28,8 +29,7 @@ type HuaweiCloudMachineTemplateSpec struct {
 	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
 
-	// Foo is an example field of HuaweiCloudMachineTemplate. Edit huaweicloudmachinetemplate_types.go to remove/update
-	Foo string `json:"foo,omitempty"`
+	Template HuaweiCloudMachineTemplateResource `json:"template"`
 }
 
 // HuaweiCloudMachineTemplateStatus defines the observed state of HuaweiCloudMachineTemplate.
@@ -57,6 +57,17 @@ type HuaweiCloudMachineTemplateList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
 	Items           []HuaweiCloudMachineTemplate `json:"items"`
+}
+
+// HuaweiCloudMachineTemplateResource describes the data needed to create am HuaweiCloudMachine from a template.
+type HuaweiCloudMachineTemplateResource struct {
+	// Standard object's metadata.
+	// More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#metadata
+	// +optional
+	ObjectMeta clusterv1.ObjectMeta `json:"metadata,omitempty"`
+
+	// Spec is the specification of the desired behavior of the machine.
+	Spec HuaweiCloudMachineSpec `json:"spec"`
 }
 
 func init() {

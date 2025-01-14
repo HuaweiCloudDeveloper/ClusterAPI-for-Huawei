@@ -6,6 +6,7 @@
       "live_reload_deps": [
         "go.mod",
         "go.sum",
+        "config",
         "api",
         "pkg",
         "internal"

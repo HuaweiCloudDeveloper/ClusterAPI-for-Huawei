@@ -41,10 +41,133 @@ spec:
             description: HuaweiCloudMachineTemplateSpec defines the desired state
               of HuaweiCloudMachineTemplate.
             properties:
-              foo:
-                description: Foo is an example field of HuaweiCloudMachineTemplate.
-                  Edit huaweicloudmachinetemplate_types.go to remove/update
-                type: string
+              template:
+                description: HuaweiCloudMachineTemplateResource describes the data
+                  needed to create am HuaweiCloudMachine from a template.
+                properties:
+                  metadata:
+                    description: |-
+                      Standard object's metadata.
+                      More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#metadata
+                    properties:
+                      annotations:
+                        additionalProperties:
+                          type: string
+                        description: |-
+                          annotations is an unstructured key value map stored with a resource that may be
+                          set by external tools to store and retrieve arbitrary metadata. They are not
+                          queryable and should be preserved when modifying objects.
+                          More info: http://kubernetes.io/docs/user-guide/annotations
+                        type: object
+                      labels:
+                        additionalProperties:
+                          type: string
+                        description: |-
+                          Map of string keys and values that can be used to organize and categorize
+                          (scope and select) objects. May match selectors of replication controllers
+                          and services.
+                          More info: http://kubernetes.io/docs/user-guide/labels
+                        type: object
+                    type: object
+                  spec:
+                    description: Spec is the specification of the desired behavior
+                      of the machine.
+                    properties:
+                      elasticIpPool:
+                        description: ElasticIPPool is the configuration to allocate
+                          Public IPv4 address (Elastic IP/EIP) from user-defined pool.
+                        properties:
+                          publicIpv4Pool:
+                            description: |-
+                              PublicIpv4Pool is ID of the Public IPv4 Pool. It sets a custom Public IPv4 Pool used to create
+                              Elastic IP address for resources created in public IPv4 subnets. Every IPv4 address, Elastic IP,
+                              will be allocated from the custom Public IPv4 pool that you brought to ECS, instead of
+                              Amazon-provided pool.
+                            maxLength: 30
+                            type: string
+                        type: object
+                      flavorRef:
+                        description: |-
+                          FlavorRef is similar to instanceType.
+                          FlavorRef is the type of instance to create. Example: s2.small.1
+                        minLength: 2
+                        type: string
+                      imageRef:
+                        description: |-
+                          镜像ID或者镜像资源的URL
+                          ImageRef is the reference from which to create the machine instance.
+                        type: string
+                      instanceID:
+                        description: InstanceID is the ECS instance ID for this machine.
+                        type: string
+                      providerID:
+                        description: ProviderID is the unique identifier as specified
+                          by the cloud provider.
+                        type: string
+                      publicIP:
+                        description: |-
+                          PublicIP specifies whether the instance should get a public IP.
+                          Precedence for this setting is as follows:
+                          1. This field if set
+                          2. Cluster/flavor setting
+                          3. Subnet default
+                        type: boolean
+                      rootVolume:
+                        description: RootVolume encapsulates the configuration options
+                          for the root volume
+                        properties:
+                          deviceName:
+                            description: Device name
+                            type: string
+                          iops:
+                            description: IOPS is the number of IOPS requested for
+                              the disk. Not applicable to all types.
+                            format: int64
+                            type: integer
+                          size:
+                            description: |-
+                              Size specifies size (in Gi) of the storage device.
+                              Must be greater than the image snapshot size or 8 (whichever is greater).
+                            format: int64
+                            minimum: 8
+                            type: integer
+                          throughput:
+                            description: Throughput to provision in MiB/s supported
+                              for the volume type. Not applicable to all types.
+                            format: int64
+                            type: integer
+                          type:
+                            description: Type is the type of the volume (e.g. gp2,
+                              io1, etc...).
+                            type: string
+                        required:
+                        - size
+                        type: object
+                      sshKeyName:
+                        description: SSHKeyName is the name of the ssh key to attach
+                          to the instance. Valid values are empty string (do not use
+                          SSH keys), a valid SSH key name, or omitted (use the default
+                          SSH key name)
+                        type: string
+                      subnet:
+                        description: |-
+                          Subnet is a reference to the subnet to use for this instance. If not specified,
+                          the cluster subnet will be used.
+                        properties:
+                          id:
+                            description: ID of resource
+                            type: string
+                        required:
+                        - id
+                        type: object
+                    required:
+                    - flavorRef
+                    type: object
+                required:
+                - spec
+                type: object
+            required:
+            - template
             type: object
           status:
             description: HuaweiCloudMachineTemplateStatus defines the observed state

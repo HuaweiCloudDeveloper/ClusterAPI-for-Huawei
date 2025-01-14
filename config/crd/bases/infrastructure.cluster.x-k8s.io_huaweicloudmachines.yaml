@@ -40,6 +40,19 @@ spec:
           spec:
             description: HuaweiCloudMachineSpec defines the desired state of HuaweiCloudMachine.
             properties:
+              elasticIpPool:
+                description: ElasticIPPool is the configuration to allocate Public
+                  IPv4 address (Elastic IP/EIP) from user-defined pool.
+                properties:
+                  publicIpv4Pool:
+                    description: |-
+                      PublicIpv4Pool is ID of the Public IPv4 Pool. It sets a custom Public IPv4 Pool used to create
+                      Elastic IP address for resources created in public IPv4 subnets. Every IPv4 address, Elastic IP,
+                      will be allocated from the custom Public IPv4 pool that you brought to ECS, instead of
+                      Amazon-provided pool.
+                    maxLength: 30
+                    type: string
+                type: object
               flavorRef:
                 description: |-
                   FlavorRef is similar to instanceType.
@@ -55,10 +68,63 @@ spec:
                 description: InstanceID is the ECS instance ID for this machine.
                 type: string
               providerID:
-                description: |-
-                  弹性云服务器uuid。
-                  ProviderID is the unique identifier as specified by the cloud provider.
+                description: ProviderID is the unique identifier as specified by the
+                  cloud provider.
                 type: string
+              publicIP:
+                description: |-
+                  PublicIP specifies whether the instance should get a public IP.
+                  Precedence for this setting is as follows:
+                  1. This field if set
+                  2. Cluster/flavor setting
+                  3. Subnet default
+                type: boolean
+              rootVolume:
+                description: RootVolume encapsulates the configuration options for
+                  the root volume
+                properties:
+                  deviceName:
+                    description: Device name
+                    type: string
+                  iops:
+                    description: IOPS is the number of IOPS requested for the disk.
+                      Not applicable to all types.
+                    format: int64
+                    type: integer
+                  size:
+                    description: |-
+                      Size specifies size (in Gi) of the storage device.
+                      Must be greater than the image snapshot size or 8 (whichever is greater).
+                    format: int64
+                    minimum: 8
+                    type: integer
+                  throughput:
+                    description: Throughput to provision in MiB/s supported for the
+                      volume type. Not applicable to all types.
+                    format: int64
+                    type: integer
+                  type:
+                    description: Type is the type of the volume (e.g. gp2, io1, etc...).
+                    type: string
+                required:
+                - size
+                type: object
+              sshKeyName:
+                description: SSHKeyName is the name of the ssh key to attach to the
+                  instance. Valid values are empty string (do not use SSH keys), a
+                  valid SSH key name, or omitted (use the default SSH key name)
+                type: string
+              subnet:
+                description: |-
+                  Subnet is a reference to the subnet to use for this instance. If not specified,
+                  the cluster subnet will be used.
+                properties:
+                  id:
+                    description: ID of resource
+                    type: string
+                required:
+                - id
+                type: object
             required:
             - flavorRef
             type: object
@@ -83,7 +149,56 @@ spec:
                   - type
                   type: object
                 type: array
+              conditions:
+                description: Conditions defines current service state of the HuaweiCloudMachine.
+                items:
+                  description: Condition defines an observation of a Cluster API resource
+                    operational state.
+                  properties:
+                    lastTransitionTime:
+                      description: |-
+                        Last time the condition transitioned from one status to another.
+                        This should be when the underlying condition changed. If that is not known, then using the time when
+                        the API field changed is acceptable.
+                      format: date-time
+                      type: string
+                    message:
+                      description: |-
+                        A human readable message indicating details about the transition.
+                        This field may be empty.
+                      type: string
+                    reason:
+                      description: |-
+                        The reason for the condition's last transition in CamelCase.
+                        The specific API may choose whether or not this field is considered a guaranteed API.
+                        This field may be empty.
+                      type: string
+                    severity:
+                      description: |-
+                        severity provides an explicit classification of Reason code, so the users or machines can immediately
+                        understand the current situation and act accordingly.
+                        The Severity field MUST be set only when Status=False.
+                      type: string
+                    status:
+                      description: status of the condition, one of True, False, Unknown.
+                      type: string
+                    type:
+                      description: |-
+                        type of condition in CamelCase or in foo.example.com/CamelCase.
+                        Many .condition.type values are consistent across resources like Available, but because arbitrary conditions
+                        can be useful (see .node.status.conditions), the ability to deconflict is important.
+                      type: string
+                  required:
+                  - lastTransitionTime
+                  - status
+                  - type
+                  type: object
+                type: array
               failureMessage:
+                type: string
+              failureReason:
+                description: MachineStatusError defines errors states for Machine
+                  objects.
                 type: string
               instanceState:
                 description: InstanceState is the state of the ECS instance for this

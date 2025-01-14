@@ -100,3 +100,14 @@ func (s *Service) deleteSubnets() error {
 
 	return nil
 }
+
+func (s *Service) FindSubnet(subnetId string) (*model.Subnet, error) {
+	request := &model.ShowSubnetRequest{
+		SubnetId: subnetId,
+	}
+	response, err := s.vpcClient.ShowSubnet(request)
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to show subnet %s", subnetId)
+	}
+	return response.Subnet, nil
+}

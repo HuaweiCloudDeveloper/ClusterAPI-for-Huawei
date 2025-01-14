@@ -19,6 +19,13 @@ package v1alpha1
 import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
+	capierrors "sigs.k8s.io/cluster-api/errors"
+)
+
+const (
+	// MachineFinalizer allows HuaweiCloudMachineReconciler to clean up HuaweiCloud resources associated with HuaweiCloudMachine before
+	// removing it from the apiserver.
+	MachineFinalizer = "huaweicloudmachine.infrastructure.cluster.x-k8s.io"
 )
 
 // EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
@@ -29,7 +36,6 @@ type HuaweiCloudMachineSpec struct {
 	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
 
-	// 弹性云服务器uuid。
 	// ProviderID is the unique identifier as specified by the cloud provider.
 	ProviderID *string `json:"providerID,omitempty"`
 
@@ -46,18 +52,41 @@ type HuaweiCloudMachineSpec struct {
 	// +kubebuilder:validation:MinLength:=2
 	FlavorRef string `json:"flavorRef"`
 
-	// TODO, need to define the type of Volume struct in the future
+	// SSHKeyName is the name of the ssh key to attach to the instance. Valid values are empty string (do not use SSH keys), a valid SSH key name, or omitted (use the default SSH key name)
+	// +optional
+	SSHKeyName *string `json:"sshKeyName,omitempty"`
+
 	// RootVolume encapsulates the configuration options for the root volume
 	// +optional
-	// RootVolume *model.RootVolume `json:"rootVolume,omitempty"`
+	RootVolume *Volume `json:"rootVolume,omitempty"`
+
+	// TODO
 	// Configuration options for the data storage volumes.
 	// +optional
 	// DataVolumes *[]model.DataVolumes `json:"dataVolumes,omitempty"`
+
+	// PublicIP specifies whether the instance should get a public IP.
+	// Precedence for this setting is as follows:
+	// 1. This field if set
+	// 2. Cluster/flavor setting
+	// 3. Subnet default
+	// +optional
+	PublicIP *bool `json:"publicIP,omitempty"`
+
+	// ElasticIPPool is the configuration to allocate Public IPv4 address (Elastic IP/EIP) from user-defined pool.
+	//
+	// +optional
+	ElasticIPPool *ElasticIPPool `json:"elasticIpPool,omitempty"`
 
 	// TODO, more fields need to be defined in the future
 	// AdminPass *string `json:"admin_pass,omitempty"`
 	// NetConfig *NetConfig `json:"net_config"`
 	// Bandwidth *BandwidthConfig `json:"bandwidth,omitempty"`
+
+	// Subnet is a reference to the subnet to use for this instance. If not specified,
+	// the cluster subnet will be used.
+	// +optional
+	Subnet *HuaweiCloudResourceReference `json:"subnet,omitempty"`
 }
 
 // HuaweiCloudMachineStatus defines the observed state of HuaweiCloudMachine.
@@ -78,7 +107,12 @@ type HuaweiCloudMachineStatus struct {
 	// +optional
 	FailureMessage *string `json:"failureMessage,omitempty"`
 
-	// TODO add conditions and more fields in the future
+	// +optional
+	FailureReason *capierrors.MachineStatusError `json:"failureReason,omitempty"`
+
+	// Conditions defines current service state of the HuaweiCloudMachine.
+	// +optional
+	Conditions clusterv1.Conditions `json:"conditions,omitempty"`
 }
 
 // +kubebuilder:object:root=true
@@ -91,6 +125,16 @@ type HuaweiCloudMachine struct {
 
 	Spec   HuaweiCloudMachineSpec   `json:"spec,omitempty"`
 	Status HuaweiCloudMachineStatus `json:"status,omitempty"`
+}
+
+// GetConditions returns the observations of the operational state of the HuaweiCloudMachine resource.
+func (r *HuaweiCloudMachine) GetConditions() clusterv1.Conditions {
+	return r.Status.Conditions
+}
+
+// SetConditions sets the underlying service state of the HuaweiMachine to the predescribed clusterv1.Conditions.
+func (r *HuaweiCloudMachine) SetConditions(conditions clusterv1.Conditions) {
+	r.Status.Conditions = conditions
 }
 
 // +kubebuilder:object:root=true
