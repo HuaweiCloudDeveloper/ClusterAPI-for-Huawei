@@ -44,9 +44,78 @@ func getLoadBalancerShareType(shareType string) elbmodel.CreateLoadBalancerBandw
 	return shareTypeEnum
 }
 
+func (s *Service) createListener(lbId string, port int32) (string, error) {
+	request := &elbmodel.CreateListenerRequest{}
+	name := fmt.Sprintf("caph-tcp-%d", port)
+	listenerbody := &elbmodel.CreateListenerOption{
+		LoadbalancerId: lbId,
+		Name:           &name,
+		Protocol:       "TCP",
+		ProtocolPort:   &port,
+	}
+	request.Body = &elbmodel.CreateListenerRequestBody{
+		Listener: listenerbody,
+	}
+	response, err := s.elbClient.CreateListener(request)
+	if err != nil {
+		// listener is already exists
+		if strings.Contains(err.Error(), "ELB.8907") {
+			return "", nil
+		}
+		return "", err
+	}
+	fmt.Println("create listener success")
+	return response.Listener.Id, nil
+}
+
+func (s *Service) createPool(listenerId string) (string, error) {
+	request := &elbmodel.CreatePoolRequest{}
+	name := fmt.Sprintf("caph-svc-gp-%s", listenerId[:8])
+	typePool := "instance"
+	poolbody := &elbmodel.CreatePoolOption{
+		LbAlgorithm: "ROUND_ROBIN",
+		ListenerId:  &listenerId,
+		Name:        &name,
+		Protocol:    "TCP",
+		VpcId:       &s.scope.VPC().Id,
+		Type:        &typePool,
+	}
+	request.Body = &elbmodel.CreatePoolRequestBody{
+		Pool: poolbody,
+	}
+	response, err := s.elbClient.CreatePool(request)
+	if err != nil {
+		return "", err
+	}
+	fmt.Println("create pool success")
+	return response.Pool.Id, nil
+}
+
+func (s *Service) deleteListener(listenerId string) error {
+	req := &elbmodel.DeleteListenerRequest{ListenerId: listenerId}
+	_, err := s.elbClient.DeleteListener(req)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (s *Service) deletePool(poolId string) error {
+	req := &elbmodel.DeletePoolRequest{PoolId: poolId}
+	_, err := s.elbClient.DeletePool(req)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 // ReconcileLoadbalancers reconciles the load balancers for the given cluster.
 func (s *Service) ReconcileLoadbalancers() error {
 	klog.Info("Reconciling load balancers")
+	if s.scope.ELB().Id != "" {
+		klog.Info("Load balancer already exists")
+		return nil
+	}
 
 	lbName := fmt.Sprintf("%s-elb", s.scope.ClusterName())
 	lb, err := s.getLoadBalancerByName(lbName)
@@ -69,6 +138,28 @@ func (s *Service) ReconcileLoadbalancers() error {
 	}
 
 	if lb != nil {
+
+		listenerId, err := s.createListener(lb.Id, 6443)
+		if err != nil {
+			return errors.Wrapf(err, "failed to create listener for load balancer %s", lbName)
+		}
+
+		poolId, err := s.createPool(listenerId)
+		if err != nil {
+			return errors.Wrapf(err, "failed to create pool for load balancer %s", lbName)
+		}
+
+		s.scope.SetELB(infrav1alpha1.LoadBalancer{
+			Id:   lb.Id,
+			Name: lb.Name,
+			Pools: []infrav1alpha1.PoolRef{
+				{Id: poolId},
+			},
+			Listeners: []infrav1alpha1.ListenerRef{
+				{Id: listenerId},
+			},
+		})
+
 		s.scope.HCCluster.Spec.ControlPlaneEndpoint = clusterv1.APIEndpoint{
 			Host: lb.Publicips[0].PublicipAddress,
 			Port: 6443,
@@ -76,6 +167,9 @@ func (s *Service) ReconcileLoadbalancers() error {
 	}
 
 	conditions.MarkTrue(s.scope.InfraCluster(), infrav1alpha1.LoadBalancerReadyCondition)
+	if err := s.scope.PatchObject(); err != nil {
+		return fmt.Errorf("failed to patch HCCluster: %v", err)
+	}
 	return nil
 }
 
@@ -90,6 +184,33 @@ func (s *Service) DeleteLoadbalancers() error {
 	}
 
 	if lb != nil {
+
+		for i := range s.scope.ELB().Pools {
+			pool := s.scope.ELB().Pools[i]
+			if err := s.deletePool(pool.Id); err != nil {
+				conditions.MarkFalse(
+					s.scope.InfraCluster(),
+					infrav1alpha1.LoadBalancerReadyCondition,
+					clusterv1.DeletingReason,
+					clusterv1.ConditionSeverityWarning,
+					"failed to delete pool")
+				return errors.Wrapf(err, "failed to delete pool %s", pool.Id)
+			}
+		}
+
+		for i := range s.scope.ELB().Listeners {
+			listener := s.scope.ELB().Listeners[i]
+			if err := s.deleteListener(listener.Id); err != nil {
+				conditions.MarkFalse(
+					s.scope.InfraCluster(),
+					infrav1alpha1.LoadBalancerReadyCondition,
+					clusterv1.DeletingReason,
+					clusterv1.ConditionSeverityWarning,
+					"failed to delete listener")
+				return errors.Wrapf(err, "failed to delete listener %s", listener.Id)
+			}
+		}
+
 		klog.Info("Deleting load balancer", "name", lbName)
 		if err := s.deleteLoadBalancer(lb.Id); err != nil {
 			conditions.MarkFalse(

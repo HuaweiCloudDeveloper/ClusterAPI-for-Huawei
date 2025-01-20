@@ -120,6 +120,31 @@ type SecurityGroupRule struct {
 	RemoteAddressGroupId string `json:"remote_address_group_id"`
 }
 
+type PoolRef struct {
+	// Id is the unique identifier of the pool.
+	Id string `json:"id"`
+}
+
+type ListenerRef struct {
+	// Id is the unique identifier of the listener.
+	Id string `json:"id"`
+}
+
+// LoadBalancer defines an AWS load balancer.
+type LoadBalancer struct {
+	// Id is the unique identifier of the loadbalancer.
+	Id string `json:"id"`
+
+	// Name is the name of the load balancer.
+	Name string `json:"name"`
+
+	// Pools is a list of pool references associated with the load balancer.
+	Pools []PoolRef `json:"pools"`
+
+	// Listeners is a list of listener references associated with the load balancer.
+	Listeners []ListenerRef `json:"listeners"`
+}
+
 // SecurityGroup defines an HuaweiCloud security group.
 type SecurityGroup struct {
 	// ID is a unique identifier.
@@ -142,6 +167,10 @@ func (s *SecurityGroup) String() string {
 type NetworkStatus struct {
 	// SecurityGroups is a map from the role/kind of the security group to its unique name, if any.
 	SecurityGroups map[SecurityGroupRole]SecurityGroup `json:"securityGroups,omitempty"`
+
+	// ELB is the Elastic Load Balancer associated with the cluster.
+	ELB LoadBalancer `json:"elb,omitempty"`
+
 	// NatGatewaysIPs contains the public IPs of the NAT Gateways
 	NatGatewaysIPs []string `json:"natGatewaysIPs,omitempty"`
 }

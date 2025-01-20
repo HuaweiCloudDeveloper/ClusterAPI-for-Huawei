@@ -181,6 +181,52 @@ spec:
               networkStatus:
                 description: NetworkStatus encapsulates HuaweiCloud networking resources.
                 properties:
+                  elb:
+                    description: ELB is the Elastic Load Balancer associated with
+                      the cluster.
+                    properties:
+                      id:
+                        description: Id is the unique identifier of the loadbalancer.
+                        type: string
+                      listeners:
+                        description: Listeners is a list of listener references associated
+                          with the load balancer.
+                        items:
+                          properties:
+                            id:
+                              description: Id is the unique identifier of the listener.
+                              type: string
+                          required:
+                          - id
+                          type: object
+                        type: array
+                      name:
+                        description: Name is the name of the load balancer.
+                        type: string
+                      pools:
+                        description: Pools is a list of pool references associated
+                          with the load balancer.
+                        items:
+                          properties:
+                            id:
+                              description: Id is the unique identifier of the pool.
+                              type: string
+                          required:
+                          - id
+                          type: object
+                        type: array
+                    required:
+                    - id
+                    - listeners
+                    - name
+                    - pools
+                    type: object
+                  natGatewaysIPs:
+                    description: NatGatewaysIPs contains the public IPs of the NAT
+                      Gateways
+                    items:
+                      type: string
+                    type: array
                   securityGroups:
                     additionalProperties:
                       description: SecurityGroup defines an HuaweiCloud security group.

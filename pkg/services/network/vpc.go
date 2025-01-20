@@ -58,7 +58,8 @@ func (s *Service) reconcileVPC() error {
 
 func (s *Service) deleteVPC() error {
 	if s.scope.VPC().Id == "" {
-		return errors.New("VPC ID is empty")
+		klog.Warning("VPC ID is empty")
+		return nil
 	}
 
 	deleteRequest := &model.DeleteVpcRequest{

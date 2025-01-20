@@ -135,6 +135,16 @@ func (s *ClusterScope) SetSecurityGroups(sg map[infrav1alpha1.SecurityGroupRole]
 	s.HCCluster.Status.Network.SecurityGroups = sg
 }
 
+// ELB returns the cluster ELB.
+func (s *ClusterScope) ELB() infrav1alpha1.LoadBalancer {
+	return s.HCCluster.Status.Network.ELB
+}
+
+// SetELB updates the cluster ELB.
+func (s *ClusterScope) SetELB(elb infrav1alpha1.LoadBalancer) {
+	s.HCCluster.Status.Network.ELB = elb
+}
+
 // PatchObject persists the cluster configuration and status.
 func (s *ClusterScope) PatchObject() error {
 	applicableConditions := []clusterv1.ConditionType{

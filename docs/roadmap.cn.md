@@ -11,7 +11,7 @@
   - [ ] [InfraMachine 整体控制器协调逻辑框架实现]()
   - [x] [支持 VPC 及 Subnet 服务创建及销毁](https://github.com/HuaweiCloudDeveloper/cluster-api-provider-huawei/pull/29)
   - [x] [创建 InfraMachine 所需的 K8S 节点最小可用系统磁盘镜像](https://github.com/HuaweiCloudDeveloper/cluster-api-provider-huawei/issues/34)
-  - [ ] [支持 SecurityGroups 服务创建及销毁]()
+  - [x] [支持 SecurityGroups 服务创建及销毁]()
   - [ ] [支持 Elastic LB 服务的创建及销毁]()
   - [ ] [支持 NAT Gateways 服务的创建及销毁]()
   - [ ] [支持 ECS 及 Elastic IP 服务的创建及销毁]()
