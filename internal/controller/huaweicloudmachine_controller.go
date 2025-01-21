@@ -23,8 +23,10 @@ import (
 	"github.com/go-logr/logr"
 	"github.com/pkg/errors"
 
+	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/client-go/tools/record"
 	"k8s.io/klog/v2"
 	"k8s.io/utils/ptr"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -53,6 +55,7 @@ const (
 // HuaweiCloudMachineReconciler reconciles a HuaweiCloudMachine object
 type HuaweiCloudMachineReconciler struct {
 	client.Client
+	Recorder    record.EventRecorder
 	Scheme      *runtime.Scheme
 	Credentials *basic.Credentials
 }
@@ -62,6 +65,9 @@ type HuaweiCloudMachineReconciler struct {
 // +kubebuilder:rbac:groups=infrastructure.cluster.x-k8s.io,resources=huaweicloudmachines/finalizers,verbs=update
 // +kubebuilder:rbac:groups=cluster.x-k8s.io,resources=clusters;clusters/status,verbs=get;list;watch
 // +kubebuilder:rbac:groups=cluster.x-k8s.io,resources=machines;machines/status,verbs=get;list;watch
+// +kubebuilder:rbac:groups="",resources=secrets;,verbs=get;list;watch
+// +kubebuilder:rbac:groups="",resources=namespaces,verbs=get;list;watch
+// +kubebuilder:rbac:groups="",resources=events,verbs=get;list;watch;create;update;patch
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.
@@ -317,7 +323,13 @@ func (r *HuaweiCloudMachineReconciler) reconcileNormal(_ context.Context, machin
 		}
 
 		machineScope.Logger.Info("Creating ECS instance")
-		instance, err = ecsSvc.CreateInstance(machineScope, []byte{}, "")
+
+		userData, userDataFormat, userDataErr := r.resolveUserData(machineScope)
+		if userDataErr != nil {
+			return ctrl.Result{}, errors.Wrapf(userDataErr, "failed to resolve userdata")
+		}
+
+		instance, err = ecsSvc.CreateInstance(machineScope, userData, userDataFormat)
 		if err != nil {
 			machineScope.Logger.Error(err, "unable to create instance")
 			conditions.MarkFalse(machineScope.HCMachine, infrav1.InstanceReadyCondition, infrav1.InstanceProvisionFailedReason, clusterv1.ConditionSeverityError, "failed to create instance: %v", err)
@@ -367,10 +379,63 @@ func (r *HuaweiCloudMachineReconciler) reconcileNormal(_ context.Context, machin
 		machineScope.SetFailureMessage(errors.Errorf("ECS instance state %q is unexpected", instance.State))
 	}
 
+	// tasks that can take place during all known instance states
+	if machineScope.InstanceIsInKnownState() {
+		if err := ecsSvc.AttachInstanceToElb(instance); err != nil {
+			machineScope.Logger.Error(err, "failed to attach instance to ELB")
+			return ctrl.Result{}, err
+		}
+	}
+
+	// tasks that can only take place during operational instance states
+	if machineScope.InstanceIsOperational() {
+		err := r.reconcileOperationalState(ecsSvc, machineScope, instance)
+		if err != nil {
+			return ctrl.Result{}, err
+		}
+	}
+
 	machineScope.Logger.Info("done reconciling instance", "instance", instance)
 	if shouldRequeue {
 		machineScope.Logger.Info("but find the instance is pending, requeue", "instance", instance.ID)
 		return ctrl.Result{RequeueAfter: DefaultReconcilerRequeue}, nil
 	}
 	return ctrl.Result{}, nil
+}
+
+func (r *HuaweiCloudMachineReconciler) reconcileOperationalState(ecsSvc services.ECSInterface, machineScope *scope.MachineScope, instance *infrav1.Instance) error {
+	machineScope.SetAddresses(instance.Addresses)
+
+	// Ensure that the security groups are correct.
+	_, err := r.ensureSecurityGroups(ecsSvc, machineScope)
+	if err != nil {
+		conditions.MarkFalse(machineScope.HCMachine, infrav1.SecurityGroupsReadyCondition, infrav1.SecurityGroupsFailedReason, clusterv1.ConditionSeverityError, "%s", err.Error())
+		machineScope.Logger.Error(err, "unable to ensure security groups")
+		return err
+	}
+	conditions.MarkTrue(machineScope.HCMachine, infrav1.SecurityGroupsReadyCondition)
+
+	return nil
+}
+
+// Ensures that the security groups of the machine are correct
+// Returns bool, error
+// Bool indicates if changes were made or not, allowing the caller to decide
+// if the machine should be updated.
+func (r *HuaweiCloudMachineReconciler) ensureSecurityGroups(ecsSvc services.ECSInterface, scope *scope.MachineScope) (bool, error) {
+	_, err := ecsSvc.GetCoreSecurityGroups(scope)
+	if err != nil {
+		return false, err
+	}
+
+	return true, nil
+}
+
+func (r *HuaweiCloudMachineReconciler) resolveUserData(machineScope *scope.MachineScope) ([]byte, string, error) {
+	userData, userDataFormat, err := machineScope.GetRawBootstrapDataWithFormat()
+	if err != nil {
+		r.Recorder.Eventf(machineScope.HCMachine, corev1.EventTypeWarning, "FailedGetBootstrapData", err.Error())
+		return nil, "", err
+	}
+	return userData, userDataFormat, err
 }

@@ -13,7 +13,10 @@ limitations under the License.
 
 package v1alpha1
 
-import "k8s.io/apimachinery/pkg/util/sets"
+import (
+	"k8s.io/apimachinery/pkg/util/sets"
+	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
+)
 
 // InstanceState describes the state of an ECS instance.
 type InstanceState string
@@ -122,6 +125,10 @@ type Instance struct {
 	// SecurityGroupIDs are one or more security group IDs this instance belongs to.
 	SecurityGroupIDs []string `json:"securityGroupIds,omitempty"`
 
+	// UserData is the raw data script passed to the instance which is run upon bootstrap.
+	// This field must not be base64 encoded and should only be used when running a new instance.
+	UserData *string `json:"userData,omitempty"`
+
 	// The private IPv4 address assigned to the instance.
 	PrivateIP *string `json:"privateIp,omitempty"`
 
@@ -135,6 +142,9 @@ type Instance struct {
 	// Configuration options for the data storage volumes.
 	// +optional
 	DataVolumes []Volume `json:"dataVolumes,omitempty"`
+
+	// Addresses contains the AWS instance associated addresses.
+	Addresses []clusterv1.MachineAddress `json:"addresses,omitempty"`
 
 	// Availability zone of instance
 	AvailabilityZone string `json:"availabilityZone,omitempty"`

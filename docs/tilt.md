@@ -48,6 +48,10 @@ kustomize_substitutions:
   HC_NODE_MACHINE_TYPE: "x1e.2u.4g"
 
   ECS_IMAGE_ID: "a9f5cc27-0d50-4864-a45e-d8eead734a3f"
+
+  KUBE_IMAGE_REPO: "registry.cn-hangzhou.aliyuncs.com/google_containers"
+  KUBE_DNS_IMAGE_REPO: "registry.cn-hangzhou.aliyuncs.com/google_containers"
+  ETCD_IMAGE_REPO: "registry.cn-hangzhou.aliyuncs.com/google_containers"
 ```
 
 **Note:** Please ensure that the values for `CLOUD_SDK_AK` and `CLOUD_SDK_SK` are base64 encoded.

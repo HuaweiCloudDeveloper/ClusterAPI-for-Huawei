@@ -2,12 +2,15 @@ package scope
 
 import (
 	"context"
+	"encoding/base64"
 
 	"github.com/pkg/errors"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	infrav1 "github.com/HuaweiCloudDeveloper/cluster-api-provider-huawei/api/v1alpha1"
+	corev1 "k8s.io/api/core/v1"
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
 	capierrors "sigs.k8s.io/cluster-api/errors"
 	"sigs.k8s.io/cluster-api/util"
@@ -157,6 +160,47 @@ func (m *MachineScope) SetFailureMessage(v error) {
 // SetFailureReason sets the HuaweiCloudMachine status failure reason.
 func (m *MachineScope) SetFailureReason(v capierrors.MachineStatusError) {
 	m.HCMachine.Status.FailureReason = &v
+}
+
+// SetAddresses sets the HuaweiCloudMachine address status.
+func (m *MachineScope) SetAddresses(addrs []clusterv1.MachineAddress) {
+	m.HCMachine.Status.Addresses = addrs
+}
+
+// GetBootstrapData returns the bootstrap data from the secret in the Machine's bootstrap.dataSecretName as base64.
+func (m *MachineScope) GetBootstrapData() (string, error) {
+	value, err := m.GetRawBootstrapData()
+	if err != nil {
+		return "", err
+	}
+	return base64.StdEncoding.EncodeToString(value), nil
+}
+
+// GetRawBootstrapData returns the bootstrap data from the secret in the Machine's bootstrap.dataSecretName.
+func (m *MachineScope) GetRawBootstrapData() ([]byte, error) {
+	data, _, err := m.GetRawBootstrapDataWithFormat()
+
+	return data, err
+}
+
+// GetRawBootstrapDataWithFormat returns the bootstrap data from the secret in the Machine's bootstrap.dataSecretName.
+func (m *MachineScope) GetRawBootstrapDataWithFormat() ([]byte, string, error) {
+	if m.Machine.Spec.Bootstrap.DataSecretName == nil {
+		return nil, "", errors.New("error retrieving bootstrap data: linked Machine's bootstrap.dataSecretName is nil")
+	}
+
+	secret := &corev1.Secret{}
+	key := types.NamespacedName{Namespace: m.Namespace(), Name: *m.Machine.Spec.Bootstrap.DataSecretName}
+	if err := m.client.Get(context.TODO(), key, secret); err != nil {
+		return nil, "", errors.Wrapf(err, "failed to retrieve bootstrap data secret for AWSMachine %s/%s", m.Namespace(), m.Name())
+	}
+
+	value, ok := secret.Data["value"]
+	if !ok {
+		return nil, "", errors.New("error retrieving bootstrap data: secret value key is missing")
+	}
+
+	return value, string(secret.Data["format"]), nil
 }
 
 // PatchObject persists the machine spec and status.
