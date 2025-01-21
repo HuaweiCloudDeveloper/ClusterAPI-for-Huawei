@@ -35,4 +35,6 @@ type ClusterScoper interface {
 	Credential() auth.ICredential
 
 	Close() error
+
+	ELB() infrav1.LoadBalancer
 }

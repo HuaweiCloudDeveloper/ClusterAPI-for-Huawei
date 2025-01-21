@@ -175,6 +175,7 @@ func main() {
 	}
 	if err = (&controller.HuaweiCloudMachineReconciler{
 		Client:      mgr.GetClient(),
+		Recorder:    mgr.GetEventRecorderFor("huaweicloudmachine-controller"),
 		Scheme:      mgr.GetScheme(),
 		Credentials: auth,
 	}).SetupWithManager(mgr); err != nil {

@@ -39,6 +39,12 @@ spec:
       controllerManager:
         extraArgs:
           cloud-provider: external
+      etcd:
+        local:
+          imageRepository: "${ETCD_IMAGE_REPO}"
+      dns:
+        imageRepository: "${KUBE_DNS_IMAGE_REPO}"
+      imageRepository: "${KUBE_IMAGE_REPO}"
     initConfiguration:
       nodeRegistration:
         kubeletExtraArgs:

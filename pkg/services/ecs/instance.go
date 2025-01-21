@@ -17,6 +17,7 @@ limitations under the License.
 package ecs
 
 import (
+	"encoding/base64"
 	"fmt"
 	"sort"
 	"strings"
@@ -24,6 +25,7 @@ import (
 
 	ecsModel "github.com/huaweicloud/huaweicloud-sdk-go-v3/services/ecs/v2/model"
 	vpcModel "github.com/huaweicloud/huaweicloud-sdk-go-v3/services/vpc/v2/model"
+	clusterv1 "sigs.k8s.io/cluster-api/api/v1beta1"
 
 	"github.com/pkg/errors"
 	"k8s.io/apimachinery/pkg/util/uuid"
@@ -167,6 +169,8 @@ func (s *Service) CreateInstance(scope *scope.MachineScope, userData []byte,
 		input.PublicIPOnLaunch = ptr.To(false)
 	}
 
+	input.UserData = ptr.To[string](base64.StdEncoding.EncodeToString(userData))
+
 	// Set security groups.
 	ids, err := s.GetCoreSecurityGroups(scope)
 	if err != nil {
@@ -192,6 +196,7 @@ func (s *Service) runInstance(i *infrav1.Instance) (*infrav1.Instance, error) {
 				ImageRef:  i.ImageID,
 				FlavorRef: i.Type,
 				Vpcid:     s.scope.VPC().Id,
+				UserData:  i.UserData,
 				Nics: []ecsModel.PrePaidServerNic{
 					{
 						SubnetId: i.SubnetID,
@@ -294,11 +299,16 @@ func (s *Service) SDKToInstance(v *ecsModel.ShowServerResponse) (*infrav1.Instan
 		instance.State = infrav1.InstanceState(strings.ToLower(v.Server.Status))
 	}
 
+	addrs := []clusterv1.MachineAddress{}
 	// Get private IP from the first available network interface
 	for _, addresses := range v.Server.Addresses {
 		for _, addr := range addresses {
 			if *addr.OSEXTIPStype == ecsModel.GetServerAddressOSEXTIPStypeEnum().FIXED {
 				instance.PrivateIP = &addr.Addr
+				addrs = append(addrs, clusterv1.MachineAddress{
+					Type:    clusterv1.MachineInternalIP,
+					Address: addr.Addr,
+				})
 				break
 			}
 		}
@@ -312,6 +322,10 @@ func (s *Service) SDKToInstance(v *ecsModel.ShowServerResponse) (*infrav1.Instan
 		for _, addr := range addresses {
 			if *addr.OSEXTIPStype == ecsModel.GetServerAddressOSEXTIPStypeEnum().FLOATING {
 				instance.PublicIP = &addr.Addr
+				addrs = append(addrs, clusterv1.MachineAddress{
+					Type:    clusterv1.MachineExternalIP,
+					Address: addr.Addr,
+				})
 				break
 			}
 		}
@@ -319,6 +333,8 @@ func (s *Service) SDKToInstance(v *ecsModel.ShowServerResponse) (*infrav1.Instan
 			break
 		}
 	}
+
+	instance.Addresses = addrs
 
 	if v.Server.Image != nil {
 		instance.ImageID = v.Server.Image.Id
@@ -383,4 +399,12 @@ func (s *Service) InstanceIfExists(id *string) (*infrav1.Instance, error) {
 	}
 
 	return s.SDKToInstance(out)
+}
+
+func (s *Service) AttachInstanceToElb(instance *infrav1.Instance) error {
+	return s.elbService.CreateMember(s.scope.ELB().Pools, instance)
+}
+
+func (s *Service) DetachInstanceFromElb(instance *infrav1.Instance) error {
+	return errors.New("DetachInstanceFromElb not implemented")
 }

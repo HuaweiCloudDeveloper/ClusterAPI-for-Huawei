@@ -21,6 +21,7 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/HuaweiCloudDeveloper/cluster-api-provider-huawei/pkg/scope"
+	"github.com/HuaweiCloudDeveloper/cluster-api-provider-huawei/pkg/services/elb"
 	"github.com/HuaweiCloudDeveloper/cluster-api-provider-huawei/pkg/services/network"
 )
 
@@ -31,6 +32,7 @@ type Service struct {
 	scope      scope.ECSScope
 	ECSClient  *ecsiface.EcsClient
 	netService *network.Service
+	elbService *elb.Service
 }
 
 // NewService returns a new service given the ECS api client.
@@ -45,9 +47,15 @@ func NewService(clusterScope scope.ECSScope) (*Service, error) {
 		return nil, errors.Wrap(err, "failed to create network service")
 	}
 
+	elbSvc, err := elb.NewService(clusterScope.(*scope.ClusterScope))
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to create ELB service")
+	}
+
 	return &Service{
 		scope:      clusterScope,
 		ECSClient:  ecsClient,
 		netService: netSvc,
+		elbService: elbSvc,
 	}, nil
 }

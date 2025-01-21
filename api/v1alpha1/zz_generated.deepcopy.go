@@ -497,6 +497,11 @@ func (in *Instance) DeepCopyInto(out *Instance) {
 		*out = make([]string, len(*in))
 		copy(*out, *in)
 	}
+	if in.UserData != nil {
+		in, out := &in.UserData, &out.UserData
+		*out = new(string)
+		**out = **in
+	}
 	if in.PrivateIP != nil {
 		in, out := &in.PrivateIP, &out.PrivateIP
 		*out = new(string)
@@ -518,6 +523,11 @@ func (in *Instance) DeepCopyInto(out *Instance) {
 		for i := range *in {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
+	}
+	if in.Addresses != nil {
+		in, out := &in.Addresses, &out.Addresses
+		*out = make([]v1beta1.MachineAddress, len(*in))
+		copy(*out, *in)
 	}
 	if in.PublicIPOnLaunch != nil {
 		in, out := &in.PublicIPOnLaunch, &out.PublicIPOnLaunch

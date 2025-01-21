@@ -2,6 +2,7 @@ package elb
 
 import (
 	"fmt"
+	"net/http"
 	"strings"
 
 	infrav1alpha1 "github.com/HuaweiCloudDeveloper/cluster-api-provider-huawei/api/v1alpha1"
@@ -68,6 +69,15 @@ func (s *Service) createListener(lbId string, port int32) (string, error) {
 	return response.Listener.Id, nil
 }
 
+func (s *Service) getListener(listenerId string) (*elbmodel.Listener, error) {
+	req := &elbmodel.ShowListenerRequest{ListenerId: listenerId}
+	response, err := s.elbClient.ShowListener(req)
+	if err != nil {
+		return nil, err
+	}
+	return response.Listener, nil
+}
+
 func (s *Service) createPool(listenerId string) (string, error) {
 	request := &elbmodel.CreatePoolRequest{}
 	name := fmt.Sprintf("caph-svc-gp-%s", listenerId[:8])
@@ -107,6 +117,15 @@ func (s *Service) deletePool(poolId string) error {
 		return err
 	}
 	return nil
+}
+
+func (s *Service) getPool(poolId string) (*elbmodel.Pool, error) {
+	req := &elbmodel.ShowPoolRequest{PoolId: poolId}
+	response, err := s.elbClient.ShowPool(req)
+	if err != nil {
+		return nil, err
+	}
+	return response.Pool, nil
 }
 
 // ReconcileLoadbalancers reconciles the load balancers for the given cluster.
@@ -339,4 +358,80 @@ func (s *Service) deleteLoadBalancer(id string) error {
 
 	_, err := s.elbClient.DeleteLoadBalancer(request)
 	return err
+}
+
+func (s *Service) getMember(poolId, memberId string) (*elbmodel.Member, error) {
+	req := &elbmodel.ShowMemberRequest{
+		PoolId:   poolId,
+		MemberId: memberId,
+	}
+	response, err := s.elbClient.ShowMember(req)
+	if err != nil {
+		return nil, err
+	}
+	if response.HttpStatusCode == http.StatusNotFound {
+		return nil, nil
+	}
+	return response.Member, nil
+}
+
+func (s *Service) memberExists(pool *elbmodel.Pool, address string, port int32, subnetId string) (bool, error) {
+	for _, member := range pool.Members {
+		member, err := s.getMember(pool.Id, member.Id)
+		if err != nil {
+			return false, err
+		}
+		if member == nil {
+			return false, nil
+		}
+		if member.Address == address && member.ProtocolPort == port && *member.SubnetCidrId == subnetId {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+func (s *Service) CreateMember(pools []infrav1alpha1.PoolRef, instance *infrav1alpha1.Instance) error {
+	for _, pool := range pools {
+		if pool.Id == "" {
+			continue
+		}
+		sdkPool, err := s.getPool(pool.Id)
+		if err != nil {
+			return err
+		}
+
+		listeners := sdkPool.Listeners
+		for _, listener := range listeners {
+			if listener.Id == "" {
+				continue
+			}
+			sdkListener, err := s.getListener(listener.Id)
+			if err != nil {
+				return err
+			}
+
+			createMembersRequest := &elbmodel.BatchCreateMembersRequest{Body: &elbmodel.BatchCreateMembersRequestBody{Members: make([]elbmodel.BatchCreateMembersOption, 0)}}
+			for _, addr := range instance.Addresses {
+				memberExists, err := s.memberExists(sdkPool, addr.Address, sdkListener.ProtocolPort, instance.SubnetID)
+				if err != nil {
+					return err
+				}
+				if !memberExists && addr.Type == clusterv1.MachineInternalIP {
+					createMembersRequest.PoolId = sdkPool.Id
+					createMember := elbmodel.BatchCreateMembersOption{Address: addr.Address, ProtocolPort: sdkListener.ProtocolPort, SubnetCidrId: &s.scope.Subnets()[0].NeutronSubnetId}
+					createMembersRequest.Body.Members = append(createMembersRequest.Body.Members, createMember)
+				}
+			}
+
+			if len(createMembersRequest.Body.Members) == 0 {
+				continue
+			}
+			_, err = s.elbClient.BatchCreateMembers(createMembersRequest)
+			if err != nil {
+				return err
+			}
+		}
+	}
+	return nil
 }
