@@ -435,3 +435,31 @@ func (s *Service) CreateMember(pools []infrav1alpha1.PoolRef, instance *infrav1a
 	}
 	return nil
 }
+
+func (s *Service) DeleteMember(pools []infrav1alpha1.PoolRef, instance *infrav1alpha1.Instance) error {
+	for _, pool := range pools {
+		if pool.Id == "" {
+			continue
+		}
+		sdkPool, err := s.getPool(pool.Id)
+		if err != nil {
+			return err
+		}
+
+		members := sdkPool.Members
+		for _, member := range members {
+			if member.Id == "" {
+				continue
+			}
+			deleteMembersRequest := &elbmodel.BatchDeleteMembersRequest{Body: &elbmodel.BatchDeleteMembersRequestBody{Members: make([]elbmodel.BatchDeleteMembersOption, 0)}}
+			deleteMembersRequest.PoolId = sdkPool.Id
+			deleteMember := elbmodel.BatchDeleteMembersOption{Id: &member.Id}
+			deleteMembersRequest.Body.Members = append(deleteMembersRequest.Body.Members, deleteMember)
+			_, err = s.elbClient.BatchDeleteMembers(deleteMembersRequest)
+			if err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}

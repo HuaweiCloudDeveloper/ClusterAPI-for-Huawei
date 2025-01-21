@@ -183,6 +183,10 @@ func (s *Service) CreateInstance(scope *scope.MachineScope, userData []byte,
 		return nil, err
 	}
 
+	// Set the providerID and instanceID as soon as we create an instance so that we keep it in case of errors afterward
+	scope.SetProviderID(out.ID, out.AvailabilityZone)
+	scope.SetInstanceID(out.ID)
+
 	return out, nil
 }
 
@@ -406,5 +410,5 @@ func (s *Service) AttachInstanceToElb(instance *infrav1.Instance) error {
 }
 
 func (s *Service) DetachInstanceFromElb(instance *infrav1.Instance) error {
-	return errors.New("DetachInstanceFromElb not implemented")
+	return s.elbService.DeleteMember(s.scope.ELB().Pools, instance)
 }
