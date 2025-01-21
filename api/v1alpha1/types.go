@@ -143,7 +143,7 @@ type Instance struct {
 	// +optional
 	DataVolumes []Volume `json:"dataVolumes,omitempty"`
 
-	// Addresses contains the AWS instance associated addresses.
+	// Addresses contains the ECS instance associated addresses.
 	Addresses []clusterv1.MachineAddress `json:"addresses,omitempty"`
 
 	// Availability zone of instance

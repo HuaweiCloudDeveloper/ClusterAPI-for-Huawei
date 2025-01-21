@@ -251,6 +251,12 @@ func (r *HuaweiCloudMachineReconciler) reconcileDelete(machineScope *scope.Machi
 
 	machineScope.Logger.Info("ECS instance found matching deleted HuaweiCloudMachine", "instance-id", instance.ID)
 
+	if machineScope.IsControlPlane() {
+		if err := ecsSvc.DetachInstanceFromElb(instance); err != nil {
+			return ctrl.Result{}, err
+		}
+	}
+
 	// Check the instance state. If it's already shutting down or terminated,
 	// do nothing. Otherwise attempt to delete it.
 	switch instance.State {
