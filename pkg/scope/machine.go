@@ -192,7 +192,7 @@ func (m *MachineScope) GetRawBootstrapDataWithFormat() ([]byte, string, error) {
 	secret := &corev1.Secret{}
 	key := types.NamespacedName{Namespace: m.Namespace(), Name: *m.Machine.Spec.Bootstrap.DataSecretName}
 	if err := m.client.Get(context.TODO(), key, secret); err != nil {
-		return nil, "", errors.Wrapf(err, "failed to retrieve bootstrap data secret for AWSMachine %s/%s", m.Namespace(), m.Name())
+		return nil, "", errors.Wrapf(err, "failed to retrieve bootstrap data secret for HuaweiCloudMachine %s/%s", m.Namespace(), m.Name())
 	}
 
 	value, ok := secret.Data["value"]
