@@ -349,7 +349,7 @@ type ListenerRef struct {
 	Id string `json:"id"`
 }
 
-// LoadBalancer defines an AWS load balancer.
+// LoadBalancer defines an HuaweiCloud load balancer.
 type LoadBalancer struct {
 	// Id is the unique identifier of the loadbalancer.
 	Id string `json:"id"`
