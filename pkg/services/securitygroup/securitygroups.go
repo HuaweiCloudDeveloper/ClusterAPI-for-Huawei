@@ -48,18 +48,15 @@ func (s *Service) ReconcileSecurityGroups() error {
 		}
 		securityGroupID = createSecurityGroupResponse.SecurityGroup.Id
 		klog.Infof("Created security group: %s", securityGroupID)
+
+		// Delete insecure security group rules
+		if err := s.deleteDefaultSecurityGroupRules(securityGroupID); err != nil {
+			return err
+		}
 	}
 
 	// Define ingress rules
 	ingressRules := []model.NeutronCreateSecurityGroupRuleOption{
-		{
-			SecurityGroupId: securityGroupID,
-			Direction:       model.GetNeutronCreateSecurityGroupRuleOptionDirectionEnum().INGRESS,
-			PortRangeMax:    int32Ptr(22),
-			PortRangeMin:    int32Ptr(22),
-			Protocol:        strPtr("tcp"),
-			RemoteIpPrefix:  strPtr("0.0.0.0/0"),
-		},
 		{
 			SecurityGroupId: securityGroupID,
 			Direction:       model.GetNeutronCreateSecurityGroupRuleOptionDirectionEnum().INGRESS,
@@ -118,6 +115,24 @@ func (s *Service) ReconcileSecurityGroups() error {
 	conditions.MarkTrue(s.scope.InfraCluster(), infrav1alpha1.ClusterSecurityGroupsReadyCondition)
 	if err := s.scope.PatchObject(); err != nil {
 		return fmt.Errorf("failed to patch HCCluster: %v", err)
+	}
+	return nil
+}
+
+func (s *Service) deleteDefaultSecurityGroupRules(securityGroupId string) error {
+	listReq := &model.ListSecurityGroupRulesRequest{SecurityGroupId: &securityGroupId}
+	listResponse, err := s.vpcClient.ListSecurityGroupRules(listReq)
+	if err != nil {
+		return fmt.Errorf("failed to list security group rule: %v", err)
+	}
+	for _, rule := range *listResponse.SecurityGroupRules {
+		if rule.Direction == "ingress" && rule.RemoteIpPrefix == "0.0.0.0/0" {
+			deleteReq := &model.DeleteSecurityGroupRuleRequest{SecurityGroupRuleId: rule.Id}
+			_, err = s.vpcClient.DeleteSecurityGroupRule(deleteReq)
+			if err != nil {
+				return fmt.Errorf("failed to delete security group rule: %v", err)
+			}
+		}
 	}
 	return nil
 }
